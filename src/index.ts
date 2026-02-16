@@ -23,34 +23,29 @@ dotenv.config();
 const app = express();
 
 /* ==============================
-   ✅ CORS CONFIG (FINAL FIX)
+   ✅ CORS CONFIG (Express 5 Safe)
 ============================== */
 
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://bookshare-khaki.vercel.app" // 🔥 YOUR FRONTEND URL
+  "https://bookshare-khaki.vercel.app"
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // allow Postman/mobile
+      if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      return callback(null, false); // ❌ do NOT throw error
+      return callback(null, false);
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
-// Explicit preflight handler
-app.options("*", cors());
 
 /* ==============================
    ✅ MIDDLEWARES
@@ -59,18 +54,17 @@ app.options("*", cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploads
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 /* ==============================
-   ✅ DATABASE CONNECTION
+   ✅ DATABASE
 ============================== */
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
 if (!MONGO_URI) {
-  throw new Error("❌ MONGO_URI is not defined in environment variables");
+  throw new Error("❌ MONGO_URI is not defined");
 }
 
 mongoose
@@ -89,13 +83,12 @@ app.use("/api/posts", postRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 
-// Root test endpoint
 app.get("/", (req, res) => {
   res.json({ message: "📚 BookShare API is running..." });
 });
 
 /* ==============================
-   ✅ SOCKET.IO SETUP
+   ✅ SOCKET.IO
 ============================== */
 
 const server = http.createServer(app);
@@ -106,7 +99,6 @@ const io = new Server(server, {
       "http://localhost:5173",
       "https://bookshare-khaki.vercel.app"
     ],
-    methods: ["GET", "POST"],
     credentials: true,
   },
 });
@@ -116,7 +108,6 @@ io.on("connection", (socket) => {
 
   socket.on("joinChat", (chatId) => {
     socket.join(chatId);
-    console.log(`🔵 User joined chat ${chatId}`);
   });
 
   socket.on("sendMessage", (data) => {
@@ -129,7 +120,7 @@ io.on("connection", (socket) => {
 });
 
 /* ==============================
-   ✅ SERVER START
+   ✅ START SERVER
 ============================== */
 
 server.listen(PORT, () => {
