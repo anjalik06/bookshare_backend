@@ -233,7 +233,9 @@ router.post("/upload", upload.single("cover"), async (req, res) => {
       description,
       user: userId,
       available: true,
-      cover: req.file ? `/uploads/${req.file.filename}` : null,
+      cover: req.file
+  ? `${process.env.BASE_URL}/uploads/${req.file.filename}`
+  : null,
     });
 
     await newBook.save();
