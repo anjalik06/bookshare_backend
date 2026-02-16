@@ -18,38 +18,53 @@ import postRoutes from "./routes/post";
 import chatRoutes from "./routes/chat";
 import leaderboardRoutes from "./routes/leaderboard";
 
-
 dotenv.config();
 
 const app = express();
 
-// Middlewares
+/* ==============================
+   ✅ CORS CONFIG (FINAL FIX)
+============================== */
+
 const allowedOrigins = [
-  "http://localhost:5173", // Vite local
-  "http://localhost:3000", // CRA local (if used)
-  "https://bookshare-backend-p1eo.onrender.com/" // 🔥 replace with your real Vercel URL
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://bookshare-khaki.vercel.app" // 🔥 YOUR FRONTEND URL
 ];
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow Postman / mobile apps
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // allow Postman/mobile
 
       if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+        return callback(null, true);
       }
+
+      return callback(null, false); // ❌ do NOT throw error
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// Explicit preflight handler
+app.options("*", cors());
+
+/* ==============================
+   ✅ MIDDLEWARES
+============================== */
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploads (correct path)
+// Serve uploads
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+/* ==============================
+   ✅ DATABASE CONNECTION
+============================== */
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
@@ -63,33 +78,39 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err));
 
+/* ==============================
+   ✅ ROUTES
+============================== */
 
-// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/communities", communityRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/chat", chatRoutes);
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/leaderboard", leaderboardRoutes);
 
-
-// Root endpoint
+// Root test endpoint
 app.get("/", (req, res) => {
   res.json({ message: "📚 BookShare API is running..." });
 });
 
-// --- FIX STARTS HERE ---
+/* ==============================
+   ✅ SOCKET.IO SETUP
+============================== */
 
-// Create HTTP server for socket + express
 const server = http.createServer(app);
 
-// Create socket instance
 const io = new Server(server, {
-  cors: { origin: "*" }
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "https://bookshare-khaki.vercel.app"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
-// Socket logic
 io.on("connection", (socket) => {
   console.log("🟢 User connected:", socket.id);
 
@@ -107,8 +128,10 @@ io.on("connection", (socket) => {
   });
 });
 
-// --- ONLY THIS LISTENS ---
+/* ==============================
+   ✅ SERVER START
+============================== */
+
 server.listen(PORT, () => {
-  console.clear();
-  console.log(`🚀 Server + Socket running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
