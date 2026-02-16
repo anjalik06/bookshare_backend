@@ -23,25 +23,22 @@ dotenv.config();
 const app = express();
 
 /* ==============================
-   ✅ CORS CONFIG (Express 5 Safe)
+   ✅ GLOBAL CORS (EXPRESS 5 SAFE)
 ============================== */
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://bookshare-khaki.vercel.app"
-];
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (
+        origin.includes("localhost") ||
+        origin.endsWith(".vercel.app")
+      ) {
         return callback(null, true);
       }
 
-      return callback(null, false);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
@@ -57,7 +54,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 /* ==============================
-   ✅ DATABASE
+   ✅ DATABASE CONNECTION
 ============================== */
 
 const PORT = process.env.PORT || 5000;
@@ -88,19 +85,29 @@ app.get("/", (req, res) => {
 });
 
 /* ==============================
-   ✅ SOCKET.IO
+   ✅ SOCKET.IO (FINAL FIX)
 ============================== */
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "https://bookshare-khaki.vercel.app"
-    ],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+
+      if (
+        origin.includes("localhost") ||
+        origin.endsWith(".vercel.app")
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST"],
     credentials: true,
   },
+  transports: ["websocket"], // 🔥 prevent polling CORS issues
 });
 
 io.on("connection", (socket) => {
